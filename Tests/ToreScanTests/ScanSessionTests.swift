@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import Testing
 @testable import ToreScan
 
@@ -6,6 +7,11 @@ import Testing
 @Suite struct ScanSessionTests {
     final class Clock {
         var now = Date(timeIntervalSinceReferenceDate: 1_000)
+    }
+
+    // onChange は @Sendable なので、数えるための箱が要る
+    final class Counter: @unchecked Sendable {
+        var value = 0
     }
 
     @Test func publishesTheFocusedItemAndReportsSettledOnes() {
@@ -58,6 +64,36 @@ import Testing
         session.observe([])
         session.clearFocus()
         #expect(session.focused == nil)
+        session.stop()
+    }
+
+    // SwiftUI は読んだプロパティしか追跡しないので、毎フレームの observe で再描画が走らないことを確かめる
+    @Test func notifiesOnlyWhenWhatTheViewReadsChanges() {
+        let clock = Clock()
+        let session = ScanSession<String>(now: { clock.now })
+        let changes = Counter()
+        func track() {
+            withObservationTracking {
+                _ = session.focused
+                _ = session.isFocusedVisible
+            } onChange: { changes.value += 1 }
+        }
+
+        track()
+        session.observe(["A"])
+        session.observe(["A"])
+        #expect(changes.value == 0)
+
+        clock.now += 0.5
+        session.advance()
+        #expect(changes.value == 1)
+        #expect(session.focused == "A")
+
+        track()
+        clock.now += 0.1
+        session.observe([])
+        #expect(changes.value == 2)
+        #expect(!session.isFocusedVisible)
         session.stop()
     }
 }

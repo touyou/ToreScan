@@ -24,7 +24,8 @@ It is not limited to cards: anything with a known set of printed identifiers wor
 
 ## Requirements
 
-- iOS 16 or later for the camera view (`DataScannerViewController` needs an A12 chip or later)
+- iOS 17 / macOS 14 / visionOS 1 or later (`ScanSession` uses the Observation framework)
+- The camera view needs an A12 chip or later (`DataScannerViewController`)
 - Swift 6 / Xcode 16 or later
 - `ToreScanCore` has no UI dependency and also builds for macOS and visionOS
 
@@ -33,7 +34,7 @@ It is not limited to cards: anything with a known set of printed identifiers wor
 Add the package in Xcode (**File ▸ Add Package Dependencies…**) or in `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/touyou/ToreScan.git", from: "0.1.0")
+.package(url: "https://github.com/touyou/ToreScan.git", from: "0.2.0")
 ```
 
 Add `NSCameraUsageDescription` to your app's Info.plist.
@@ -47,7 +48,7 @@ import ToreScanCore
 
 struct ScannerView: View {
     let matcher: IdentifierMatcher<Card>          // built once from your card list
-    @StateObject private var session = ScanSession<Card>()
+    @State private var session = ScanSession<Card>()
     @State private var addsAutomatically = false
 
     var body: some View {
@@ -83,7 +84,7 @@ let matcher = IdentifierMatcher(cards, identifier: \.number)
 | Type | Module | What it does |
 | --- | --- | --- |
 | `LiveTextScanner` | ToreScan | SwiftUI camera view; reports every string in view |
-| `ScanSession` | ToreScan | `ObservableObject` that steadies the stream and runs its own timer |
+| `ScanSession` | ToreScan | `@Observable` model that steadies the stream and runs its own timer |
 | `ScanStabilizer` | ToreScanCore | The logic behind `ScanSession` as a plain value type, with no timers and no clock |
 | `IdentifierMatcher` | ToreScanCore | Finds known identifiers in OCR text |
 

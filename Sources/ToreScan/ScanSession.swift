@@ -1,12 +1,12 @@
-import Combine
 import Foundation
+import Observation
 import ToreScanCore
 
 /// Drives a ``ScanStabilizer`` for a SwiftUI scanner screen: feed it what the camera reads and
 /// observe ``focused`` to know what to offer.
 ///
 /// ```swift
-/// @StateObject private var session = ScanSession<Card>()
+/// @State private var session = ScanSession<Card>()
 ///
 /// LiveTextScanner { texts in session.observe(matcher.matches(in: texts)) }
 ///
@@ -19,23 +19,27 @@ import ToreScanCore
 /// automatically. The session keeps its own timer, so held items expire and items settle even while
 /// the scanner reports nothing new.
 @MainActor
-public final class ScanSession<Item: Hashable & Sendable>: ObservableObject {
+@Observable
+public final class ScanSession<Item: Hashable & Sendable> {
     /// The item to offer in the UI, or nil when nothing has been read recently.
-    @Published public private(set) var focused: Item?
+    public private(set) var focused: Item?
     /// Everything the camera sees right now, in the order it was reported.
-    @Published public private(set) var visible: [Item] = []
+    public private(set) var visible: [Item] = []
+    /// Whether ``focused`` is in view right now rather than being held after the camera lost it.
+    public private(set) var isFocusedVisible = false
 
     /// Called once for each item when it has stayed in view long enough to be trusted and isn't a
     /// repeat of something handled a moment ago. Call ``markHandled(_:)`` if you act on it.
-    public var onSettle: ((Item) -> Void)?
+    @ObservationIgnored public var onSettle: ((Item) -> Void)?
 
     public var configuration: ScanStabilizer<Item>.Configuration {
         get { stabilizer.configuration }
         set { stabilizer.configuration = newValue }
     }
 
-    private var stabilizer: ScanStabilizer<Item>
-    private var wakeUp: Task<Void, Never>?
+    // 毎フレーム書き換わるので追跡しない。画面に出す値は publish で差分があるときだけ写す
+    @ObservationIgnored private var stabilizer: ScanStabilizer<Item>
+    @ObservationIgnored private var wakeUp: Task<Void, Never>?
     private let now: @MainActor () -> Date
 
     public init(configuration: ScanStabilizer<Item>.Configuration = .init()) {
@@ -51,11 +55,6 @@ public final class ScanSession<Item: Hashable & Sendable>: ObservableObject {
 
     deinit {
         wakeUp?.cancel()
-    }
-
-    /// Whether ``focused`` is in view right now rather than being held after the camera lost it.
-    public var isFocusedVisible: Bool {
-        stabilizer.isFocusedVisible
     }
 
     /// Reports everything the camera sees now. Pass an empty array when it sees nothing.
@@ -88,6 +87,7 @@ public final class ScanSession<Item: Hashable & Sendable>: ObservableObject {
     private func publish(settled: [Item]) {
         if focused != stabilizer.focused { focused = stabilizer.focused }
         if visible != stabilizer.visible { visible = stabilizer.visible }
+        if isFocusedVisible != stabilizer.isFocusedVisible { isFocusedVisible = stabilizer.isFocusedVisible }
         for item in settled {
             onSettle?(item)
         }

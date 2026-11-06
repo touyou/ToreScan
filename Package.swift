@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "ToreScan",
-    platforms: [.iOS(.v16), .macOS(.v13), .visionOS(.v1)],
+    platforms: [.iOS(.v17), .macOS(.v14), .visionOS(.v1)],
     products: [
         .library(name: "ToreScan", targets: ["ToreScan"]),
         .library(name: "ToreScanCore", targets: ["ToreScanCore"]),
